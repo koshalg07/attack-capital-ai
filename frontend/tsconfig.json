@@ -1,8 +1,12 @@
 {
-  "files": [],
-  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist"],
   "compilerOptions": {
     "baseUrl": ".",
+    "jsx": "react-jsx",
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./src/*"]
     },
