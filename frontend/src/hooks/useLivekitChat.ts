@@ -29,6 +29,8 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
   
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const agentJoinedRef = useRef<boolean>(false);
+  const roomRef = useRef<Room | null>(null);
+  const connectingRef = useRef<boolean>(false);
 
   const addMessage = useCallback((sender: string, content: string, isUser = false) => {
     const message: ChatMessage = {
@@ -42,9 +44,10 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
   }, []);
 
   const connect = useCallback(async () => {
-    if (isConnecting || isConnected) return;
+    if (connectingRef.current || roomRef.current || isConnecting || isConnected) return;
     
     setIsConnecting(true);
+    connectingRef.current = true;
     try {
       // Get token from backend
       const response = await axios.get(`${BACKEND_URL}/token`, {
@@ -56,17 +59,21 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
       // Create and connect to room
       const newRoom = new Room();
       
-      // Set up event listeners
+      // Minimal listeners + presence
       newRoom.on(RoomEvent.Connected, () => {
         console.log('Connected to room');
         setIsConnected(true);
         setIsConnecting(false);
+        connectingRef.current = false;
+        roomRef.current = newRoom;
       });
 
       newRoom.on(RoomEvent.Disconnected, () => {
         console.log('Disconnected from room');
         setIsConnected(false);
         setIsConnecting(false);
+        connectingRef.current = false;
+        roomRef.current = null;
       });
 
       newRoom.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant, kind?: DataPacket_Kind, topic?: string) => {
@@ -84,29 +91,30 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
       });
 
       newRoom.on(RoomEvent.ParticipantConnected, (participant) => {
-        console.log('Participant connected:', participant.identity);
-        if (participant.identity === AGENT_IDENTITY && !agentJoinedRef.current) {
-          agentJoinedRef.current = true;
-          addMessage('System', 'AI agent joined the room', false);
-        }
+        addMessage('System', `${participant.identity} joined the room`, false);
       });
 
-      await newRoom.connect(wsUrl, token);
+      console.log('Connecting to LiveKit:', wsUrl);
+      await newRoom.connect(wsUrl, token, {
+        rtcConfig: {
+          iceTransportPolicy: 'relay',
+        },
+        autoSubscribe: true,
+      });
+      // RoomEvent.Connected handler will flip state
       setRoom(newRoom);
-      
-      // If agent is already in the room, show system message once
-      const agentAlreadyPresent = Array.from(newRoom.remoteParticipants.values()).some(
-        (p) => p.identity === AGENT_IDENTITY
-      );
-      if (agentAlreadyPresent && !agentJoinedRef.current) {
-        agentJoinedRef.current = true;
-        addMessage('System', 'AI agent joined the room', false);
-      }
+      roomRef.current = newRoom;
+
+      // List already present participants (besides self)
+      Array.from(newRoom.remoteParticipants.values()).forEach((p) => {
+        addMessage('System', `${p.identity} is in the room`, false);
+      });
       
     } catch (error) {
       console.error('Failed to connect:', error);
       onError?.('Failed to connect to chat room');
       setIsConnecting(false);
+      connectingRef.current = false;
     }
   }, [identity, roomName, isConnecting, isConnected, onError, addMessage]);
 
@@ -155,9 +163,9 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
 
   useEffect(() => {
     return () => {
-      disconnect();
+      // no-op: avoid auto-disconnect to prevent churn
     };
-  }, [disconnect]);
+  }, []);
 
   return {
     connect,
