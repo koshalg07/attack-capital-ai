@@ -140,26 +140,106 @@ VITE_AGENT_IDENTITY=assistant
 
 ## 🏃‍♂️ Running the Application
 
-### Development Mode
+### Option 1: Local Development (No Docker)
 
-1. **Start the Backend**:
+#### Prerequisites
+- Python 3.11+ installed
+- Virtual environment activated
+- Environment variables configured
+
+#### Backend Setup & Run
+
+1. **Navigate to backend directory**:
    ```bash
    cd backend
+   ```
+
+2. **Create and activate virtual environment**:
+   ```bash
+   # Create virtual environment
+   python -m venv venv
+   
+   # Activate virtual environment
+   # On Windows:
+   venv\Scripts\activate
+   # On macOS/Linux:
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables**:
+   ```bash
+   # Copy the example file
+   cp env.example .env
+   
+   # Edit .env with your actual credentials
+   # Required: LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_WS_URL
+   # Optional: GEMINI_API_KEY for AI responses
+   ```
+
+5. **Start the backend server**:
+   ```bash
    uvicorn app.main:app --reload --host 0.0.0.0 --port 3001
    ```
 
-2. **Start the Frontend**:
+#### Frontend Setup & Run
+
+1. **Navigate to frontend directory**:
    ```bash
    cd frontend
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Start the development server**:
+   ```bash
    npm run dev
    ```
 
-3. **Access the Application**:
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:3001
-   - Health Check: http://localhost:3001/health
+#### Access the Application
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3001
+- **Health Check**: http://localhost:3001/health
+- **API Documentation**: http://localhost:3001/docs (FastAPI auto-generated docs)
+
+### Option 2: Docker Deployment
+
+#### Backend Only with Docker
+
+```bash
+# Build the Docker image
+docker build -t attack-capital-backend ./backend
+
+# Run with environment variables
+docker run -p 3001:3001 \
+  -e LIVEKIT_API_KEY=your_api_key \
+  -e LIVEKIT_API_SECRET=your_api_secret \
+  -e LIVEKIT_WS_URL=wss://your-livekit-server.com \
+  -e GEMINI_API_KEY=your_gemini_key \
+  attack-capital-backend
+```
+
+#### Using Environment File with Docker
+
+```bash
+# Create .env file in backend directory first
+cp backend/env.example backend/.env
+# Edit backend/.env with your credentials
+
+# Run with environment file
+docker run -p 3001:3001 --env-file ./backend/.env attack-capital-backend
+```
 
 ### Production Mode
+
+#### Local Production
 
 1. **Build Frontend**:
    ```bash
@@ -167,11 +247,21 @@ VITE_AGENT_IDENTITY=assistant
    npm run build
    ```
 
-2. **Run Backend**:
+2. **Run Backend** (without reload for production):
    ```bash
    cd backend
    uvicorn app.main:app --host 0.0.0.0 --port 3001
    ```
+
+#### Docker Production
+
+```bash
+# Build and run in production mode
+docker run -p 3001:3001 \
+  --env-file ./backend/.env \
+  --restart unless-stopped \
+  attack-capital-backend
+```
 
 ## 📁 Project Structure
 
@@ -365,26 +455,5 @@ npm run dev -- --debug
 - **shadcn/ui**: Component library
 - **LiveKit Client**: Real-time communication
 - **Axios**: HTTP client
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the troubleshooting section
-- Review the API documentation
-
----
 
 **Happy Chatting! 🚀**
