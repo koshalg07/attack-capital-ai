@@ -141,6 +141,22 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
         setIsTyping(false);
       }, 10000); // 10 seconds timeout
       
+      // Also ask backend agent for a reply and append it
+      try {
+        const resp = await axios.post(`${BACKEND_URL}/agent/reply`, {
+          userId: identity,
+          text: message,
+        });
+        const reply: string = resp.data?.reply ?? "";
+        if (reply) {
+          addMessage('Assistant', reply, false);
+          setIsTyping(false);
+        }
+      } catch (e) {
+        console.error('Agent reply failed', e);
+        setIsTyping(false);
+      }
+
     } catch (error) {
       console.error('Failed to send message:', error);
       onError?.('Failed to send message');

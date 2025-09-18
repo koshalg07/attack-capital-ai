@@ -17,7 +17,7 @@ class Message(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
     text: Mapped[str] = mapped_column(String, nullable=False)
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    meta: Mapped[Optional[Dict[str, Any]]] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
@@ -34,7 +34,7 @@ class SQLiteMemory:
 
     def save(self, user_id: str, text: str, metadata: Optional[Dict[str, Any]] = None) -> int:
         with Session(self.engine) as session:
-            row = Message(user_id=user_id, text=text, metadata=metadata)
+            row = Message(user_id=user_id, text=text, meta=metadata)
             session.add(row)
             session.commit()
             session.refresh(row)
@@ -54,7 +54,7 @@ class SQLiteMemory:
                     "id": r.id,
                     "user_id": r.user_id,
                     "text": r.text,
-                    "metadata": r.metadata,
+                    "metadata": r.meta,
                     "created_at": r.created_at.isoformat(),
                 }
                 for r in rows

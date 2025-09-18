@@ -9,8 +9,10 @@ def _try_gemini(user_text: str, context_messages: Optional[List[str]], api_key: 
     try:
         import google.generativeai as genai  # type: ignore
 
+        settings = get_settings()
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model_name = settings.gemini_model or "gemini-1.5-flash"
+        model = genai.GenerativeModel(model_name)
         prompt_parts: List[str] = ["You are a helpful assistant."]
         if context_messages:
             for c in context_messages[-5:]:
@@ -18,7 +20,9 @@ def _try_gemini(user_text: str, context_messages: Optional[List[str]], api_key: 
         prompt_parts.append(user_text)
         resp = model.generate_content("\n".join(prompt_parts))
         return getattr(resp, "text", None) or (resp.candidates[0].content.parts[0].text if getattr(resp, "candidates", None) else None)
-    except Exception:
+    except Exception as e:
+        # Debug log to surface why Gemini call failed
+        print("Gemini error:", repr(e))
         return None
 
 

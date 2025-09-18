@@ -8,7 +8,6 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="Attack Capital AI Backend", version="0.1.0")
 
-    # CORS for frontend dev
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -18,12 +17,13 @@ def create_app() -> FastAPI:
     )
 
     # Routers
-    from app.routes.token import router as token_router  # local import to avoid issues during settings init
-
+    from app.routes.token import router as token_router  
+    from app.routes.agent import router as agent_router
     app.include_router(token_router)
+    app.include_router(agent_router)
 
     @app.get("/health")
-    def health_check():  # pragma: no cover - trivial endpoint
+    def health_check():  
         return {"status": "ok"}
 
     return app
