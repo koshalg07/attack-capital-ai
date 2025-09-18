@@ -23,6 +23,8 @@ class Settings:
     gcp_project_id: Optional[str]
     gcp_location: Optional[str]
     google_application_credentials: Optional[str]
+    mem0_base_url: Optional[str]
+    mem0_api_key: Optional[str]
     agent_identity: str
     cors_origins: List[str]
 
@@ -38,6 +40,8 @@ def get_settings() -> Settings:
     gcp_project_id = os.environ.get("GCP_PROJECT_ID") or os.environ.get("PROJECT_ID")
     gcp_location = os.environ.get("GCP_LOCATION") or os.environ.get("LOCATION")
     google_application_credentials = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or os.environ.get("SERVICE_ACCOUNT_JSON")
+    mem0_base_url = os.environ.get("MEM0_BASE_URL")
+    mem0_api_key = os.environ.get("MEM0_API_KEY")
     agent_identity = os.environ.get("AGENT_IDENTITY", "assistant")
 
     cors_raw = os.environ.get("CORS_ORIGINS", "http://localhost:8080")
@@ -58,6 +62,8 @@ def get_settings() -> Settings:
         gcp_project_id=gcp_project_id,
         gcp_location=gcp_location,
         google_application_credentials=google_application_credentials,
+        mem0_base_url=mem0_base_url,
+        mem0_api_key=mem0_api_key,
         agent_identity=agent_identity,
         cors_origins=cors_origins,
     )

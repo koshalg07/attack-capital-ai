@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, create_engine, func, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+import requests
 
 
 class Base(DeclarativeBase):
@@ -41,7 +42,10 @@ class SQLiteMemory:
             return row.id
 
     def search(self, user_id: str, k: int = 5, query: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Return up to k recent messages for user, optionally filtering by LIKE query."""
+        """Return up to k recent messages for user, optionally filtering by LIKE query.
+
+        This method is a simple recency-based context fetch. For RAG, see `SemanticMemory` below.
+        """
         with Session(self.engine) as session:
             stmt = select(Message).where(Message.user_id == user_id)
             if query:
@@ -59,5 +63,97 @@ class SQLiteMemory:
                 }
                 for r in rows
             ]
+
+
+class SemanticMemory:
+    """Lightweight in-process RAG using embeddings.
+
+    This is a placeholder showing how to integrate a vector search later (e.g., mem0/Pinecone/FAISS).
+    For now it falls back to recency if embeddings are unavailable.
+    """
+
+    def __init__(self, base: Optional[SQLiteMemory] = None) -> None:
+        self.base = base or SQLiteMemory()
+        try:
+            import numpy as np  # type: ignore
+            self._np = np
+        except Exception:
+            self._np = None
+
+    def embed(self, text: str) -> Optional[list]:
+        # Placeholder: returns None to skip semantic ranking
+        return None
+
+    def search(self, user_id: str, k: int = 5, query: Optional[str] = None) -> List[Dict[str, Any]]:
+        # If no embeddings, defer to recency search
+        return self.base.search(user_id=user_id, k=k, query=query)
+
+
+class Mem0Memory:
+    """Adapter for mem0 HTTP API (save/search). Minimal shape to match our SQLiteMemory API.
+
+    Expects MEM0_BASE_URL and MEM0_API_KEY in settings. If unavailable, falls back to SQLiteMemory.
+    API is assumed as:
+      POST {base}/memories -> { user_id, text, metadata? }
+      GET  {base}/memories/search -> params: user_id, q, k
+    Adjust endpoints to your actual mem0 deployment if different.
+    """
+
+    def __init__(self, fallback: Optional[SQLiteMemory] = None) -> None:
+        from app.utils.config import get_settings
+
+        self.settings = get_settings()
+        self.base = self.settings.mem0_base_url
+        self.key = self.settings.mem0_api_key
+        self.fallback = fallback or SQLiteMemory()
+
+    def _headers(self) -> Dict[str, str]:
+        hdrs = {"Content-Type": "application/json"}
+        if self.key:
+            hdrs["Authorization"] = f"Bearer {self.key}"
+        return hdrs
+
+    def save(self, user_id: str, text: str, metadata: Optional[Dict[str, Any]] = None) -> int:
+        if not self.base or not self.key:
+            return self.fallback.save(user_id, text, metadata)
+        try:
+            resp = requests.post(
+                f"{self.base.rstrip('/')}/memories",
+                json={"user_id": user_id, "text": text, "metadata": metadata or {}},
+                headers=self._headers(),
+                timeout=8,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return int(data.get("id", 0))
+        except Exception:
+            return self.fallback.save(user_id, text, metadata)
+
+    def search(self, user_id: str, k: int = 5, query: Optional[str] = None) -> List[Dict[str, Any]]:
+        if not self.base or not self.key:
+            return self.fallback.search(user_id, k, query)
+        try:
+            resp = requests.get(
+                f"{self.base.rstrip('/')}/memories/search",
+                params={"user_id": user_id, "q": query or "", "k": k},
+                headers=self._headers(),
+                timeout=8,
+            )
+            resp.raise_for_status()
+            items = resp.json() or []
+            results: List[Dict[str, Any]] = []
+            for it in items[:k]:
+                results.append(
+                    {
+                        "id": it.get("id", 0),
+                        "user_id": user_id,
+                        "text": it.get("text", ""),
+                        "metadata": it.get("metadata"),
+                        "created_at": it.get("created_at", ""),
+                    }
+                )
+            return results
+        except Exception:
+            return self.fallback.search(user_id, k, query)
 
 

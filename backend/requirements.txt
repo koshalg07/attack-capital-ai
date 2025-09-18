@@ -7,3 +7,6 @@ sqlalchemy
 pytest
 google-generativeai
 pydantic-settings
+livekit-agents
+requests
+numpy
