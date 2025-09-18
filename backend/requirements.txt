@@ -2,7 +2,8 @@ fastapi
 uvicorn
 python-dotenv
 httpx
-openai
 livekit
 sqlalchemy
 pytest
+google-generativeai
+pydantic-settings
