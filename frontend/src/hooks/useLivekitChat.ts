@@ -78,9 +78,9 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
 
       newRoom.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant, kind?: DataPacket_Kind, topic?: string) => {
         if (topic === 'lk.chat') {
-          const message = new TextDecoder().decode(payload);
+          const text = new TextDecoder().decode(payload);
           const senderName = participant?.identity || 'Assistant';
-          addMessage(senderName, message, false);
+          addMessage(senderName, text, false);
           
           // Reset typing indicator
           setIsTyping(false);
@@ -149,7 +149,12 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
         });
         const reply: string = resp.data?.reply ?? "";
         if (reply) {
-          addMessage('Assistant', reply, false);
+          // Show locally with clear attribution
+          const rendered = `Assistant replying to ${identity}\n${reply}`;
+          addMessage('Assistant', rendered, false);
+          // Broadcast as plain text so others render same
+          const encoder = new TextEncoder();
+          await room.localParticipant.publishData(encoder.encode(rendered), { topic: 'lk.chat' });
           setIsTyping(false);
         }
       } catch (e) {
