@@ -1,44 +1,53 @@
+import os
 from functools import lru_cache
 from typing import List, Optional
+from dataclasses import dataclass
 
 try:
-    # Pydantic v2
-    from pydantic_settings import BaseSettings
-    from pydantic import Field, AliasChoices
-except Exception: 
-    from pydantic import BaseSettings  
-    from pydantic import Field 
+    # Load .env if python-dotenv is available
+    from dotenv import load_dotenv  # type: ignore
+
+    load_dotenv()
+except Exception:
+    pass
 
 
-class Settings(BaseSettings):
-    """Application configuration loaded from environment variables.
-
-    Uses sensible defaults for local development.
-    """
-
-    livekit_api_key: str = Field(default="", alias="LIVEKIT_API_KEY")
-    livekit_api_secret: str = Field(default="", alias="LIVEKIT_API_SECRET")
-    livekit_ws_url: str = Field(
-        default="",
-        alias="LIVEKIT_WS_URL",
-        validation_alias=AliasChoices("LIVEKIT_WS_URL", "LIVEKIT_URL"),
-    )
-
-    port: int = Field(default=3001, alias="PORT")
-
-    gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
-    agent_identity: str = Field(default="assistant", alias="AGENT_IDENTITY")
-
-    cors_origins: List[str] = Field(default_factory=lambda: ["http://localhost:5173"])  # frontend dev URL
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        populate_by_name = True
+@dataclass
+class Settings:
+    livekit_api_key: str
+    livekit_api_secret: str
+    livekit_ws_url: str
+    port: int
+    gemini_api_key: Optional[str]
+    agent_identity: str
+    cors_origins: List[str]
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()  
+    livekit_api_key = os.environ.get("LIVEKIT_API_KEY", "")
+    livekit_api_secret = os.environ.get("LIVEKIT_API_SECRET", "")
+    livekit_ws_url = os.environ.get("LIVEKIT_WS_URL") or os.environ.get("LIVEKIT_URL", "")
+    port_str = os.environ.get("PORT", "3001")
+    gemini_api_key = os.environ.get("GEMINI_API_KEY")
+    agent_identity = os.environ.get("AGENT_IDENTITY", "assistant")
+
+    cors_raw = os.environ.get("CORS_ORIGINS", "http://localhost:5173")
+    cors_origins = [o.strip() for o in cors_raw.split(",") if o.strip()]
+
+    try:
+        port = int(port_str)
+    except ValueError:
+        port = 3001
+
+    return Settings(
+        livekit_api_key=livekit_api_key,
+        livekit_api_secret=livekit_api_secret,
+        livekit_ws_url=livekit_ws_url,
+        port=port,
+        gemini_api_key=gemini_api_key,
+        agent_identity=agent_identity,
+        cors_origins=cors_origins,
+    )
 
 
