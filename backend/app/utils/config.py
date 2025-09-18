@@ -32,7 +32,7 @@ def get_settings() -> Settings:
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
     agent_identity = os.environ.get("AGENT_IDENTITY", "assistant")
 
-    cors_raw = os.environ.get("CORS_ORIGINS", "http://localhost:5173")
+    cors_raw = os.environ.get("CORS_ORIGINS", "http://localhost:8080")
     cors_origins = [o.strip() for o in cors_raw.split(",") if o.strip()]
 
     try:

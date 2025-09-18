@@ -95,7 +95,7 @@ export function useLivekitChat({ identity, room: roomName, onError }: UseLivekit
       setRoom(newRoom);
       
       // If agent is already in the room, show system message once
-      const agentAlreadyPresent = Array.from(newRoom.participants.values()).some(
+      const agentAlreadyPresent = Array.from(newRoom.remoteParticipants.values()).some(
         (p) => p.identity === AGENT_IDENTITY
       );
       if (agentAlreadyPresent && !agentJoinedRef.current) {
